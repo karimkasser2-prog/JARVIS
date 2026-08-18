@@ -1,0 +1,57 @@
+name: Install JARVIS files
+
+on:
+
+  workflow_dispatch:
+
+permissions:
+
+  contents: write
+
+jobs:
+
+  unpack:
+
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: Récupérer le dépôt
+
+        uses: actions/checkout@v4
+
+      - name: Extraire JARVIS
+
+        run: |
+
+          rm -rf /tmp/jarvis
+
+          mkdir -p /tmp/jarvis
+
+          unzip -o JARVIS-V0.3-ready.zip -d /tmp/jarvis
+
+          cp -R /tmp/jarvis/JARVIS-V0.3/* .
+
+          rm -f JARVIS-V0.3-ready.zip
+
+      - name: Enregistrer les fichiers
+
+        run: |
+
+          git config user.name "JARVIS Builder"
+
+          git config user.email "actions@github.com"
+
+          git add -A
+
+          if git diff --cached --quiet; then
+
+            echo "Aucun changement"
+
+            exit 0
+
+          fi
+
+          git commit -m "Install JARVIS V0.3"
+
+          git push
