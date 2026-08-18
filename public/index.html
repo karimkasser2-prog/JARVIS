@@ -1,110 +1,349 @@
-<!doctype html>
-<html lang="fr">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <meta name="theme-color" content="#05080d">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="JARVIS">
-  <link rel="manifest" href="/manifest.webmanifest">
-  <link rel="icon" href="/icon.svg" type="image/svg+xml">
-  <title>JARVIS</title>
-  <style>
-    :root{color-scheme:dark;--bg:#05080d;--panel:#0a1018;--line:#183248;--cyan:#57d7ff;--muted:#7791a6;--text:#e9f6ff}
-    *{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 50% 35%,#102434 0,#070b11 38%,#030507 100%);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display",sans-serif;color:var(--text);min-height:100svh}
-    .app{min-height:100svh;display:flex;flex-direction:column;padding:env(safe-area-inset-top) 16px env(safe-area-inset-bottom)}
-    header{display:flex;justify-content:space-between;align-items:center;padding:18px 2px}.brand{letter-spacing:.34em;font-size:13px;color:#9fc8dc}.status{font-size:11px;color:var(--muted)}
-    main{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:28px}
-    .orb{width:190px;height:190px;border-radius:50%;position:relative;display:grid;place-items:center;background:radial-gradient(circle,#dffaff 0 3%,#62dfff 4% 7%,#0d3145 18%,#06101a 55%,transparent 70%);box-shadow:0 0 35px #1a99c955,0 0 100px #1a99c933;transition:.25s}
-    .orb:before,.orb:after{content:"";position:absolute;border:1px solid #4ed8ff66;border-radius:50%;inset:12px;animation:spin 10s linear infinite}.orb:after{inset:30px;border-color:#4ed8ff33;animation-direction:reverse;animation-duration:7s}
-    .orb.active{box-shadow:0 0 45px #57d7ffaa,0 0 140px #1a99c977}.orb.active:before{animation-duration:2s}
-    @keyframes spin{to{transform:rotate(360deg)}}
-    .orbText{z-index:2;text-align:center}.orbText b{display:block;font-size:18px;letter-spacing:.18em}.orbText span{display:block;font-size:10px;color:#8fb7c8;margin-top:7px;letter-spacing:.15em}
-    .panel{width:min(680px,100%);background:#071019cc;border:1px solid var(--line);border-radius:20px;backdrop-filter:blur(16px);padding:14px;display:none}
-    .panel.show{display:block}.messages{max-height:27svh;overflow:auto;display:flex;flex-direction:column;gap:10px}.msg{padding:10px 12px;border-radius:12px;background:#0b1721;font-size:13px;line-height:1.45}.msg.user{border:1px solid #21445b}.msg.jarvis{border:1px solid #17384b}.label{font-size:9px;color:var(--cyan);letter-spacing:.14em;margin-bottom:4px}
-    .controls{display:flex;flex-direction:column;align-items:center;gap:12px}.mic{width:74px;height:74px;border-radius:50%;border:1px solid #57d7ff99;background:#0b1a25;color:#dffaff;font-size:25px;box-shadow:0 0 25px #1a99c955}.mic:active{transform:scale(.96)}button{font:inherit}
-    .hint{font-size:11px;color:var(--muted);text-align:center}.bottom{display:flex;gap:8px;justify-content:center;padding:12px 0 16px}.small{background:#08121a;border:1px solid #183248;color:#9fb9c8;border-radius:999px;padding:8px 12px;font-size:11px}
-    dialog{background:#071019;color:var(--text);border:1px solid #21445b;border-radius:18px;max-width:92%;width:420px}dialog::backdrop{background:#000b}.row{display:flex;justify-content:space-between;gap:12px;align-items:center;margin:14px 0}.field{width:100%;background:#050a0f;color:#fff;border:1px solid #20384a;border-radius:10px;padding:10px}label{font-size:11px;color:#9fb9c8}
-  </style>
-</head>
-<body>
-<div class="app">
-<header><div class="brand">J A R V I S</div><div id="status" class="status">STANDBY</div></header>
-<main>
-  <div id="orb" class="orb"><div class="orbText"><b>JARVIS</b><span id="orbSub">READY</span></div></div>
-  <div id="panel" class="panel"><div id="messages" class="messages"></div></div>
-  <div class="controls">
-    <button id="mic" class="mic" aria-label="Parler">◉</button>
-    <div id="hint" class="hint">Touchez le cercle pour démarrer une conversation vocale.</div>
-  </div>
-</main>
-<div class="bottom"><button class="small" id="memoryBtn">Mémoire</button><button class="small" id="settingsBtn">Réglages</button><button class="small" id="clearBtn">Effacer</button></div>
-</div>
+const cors = {
 
-<dialog id="settings">
-  <h3>Réglages JARVIS</h3>
-  <div class="row"><label>Nom</label><input id="name" class="field" value="Karim"></div>
-  <div class="row"><label>Modèle</label><select id="model" class="field"><option>gpt-realtime-2.1</option><option>gpt-realtime-2.1-mini</option></select></div>
-  <div class="row"><label>Voix</label><select id="voice" class="field"><option>marin</option><option>cedar</option><option>ash</option><option>coral</option><option>sage</option><option>verse</option></select></div>
-  <div class="row"><button class="small" id="closeSettings">Fermer</button><button class="small" id="saveSettings">Enregistrer</button></div>
-</dialog>
+  "Access-Control-Allow-Origin": "*",
 
-<dialog id="memory">
-  <h3>Mémoire locale</h3>
-  <p style="font-size:12px;color:#9fb9c8">JARVIS conserve localement quelques préférences et le contexte court. Aucune mémoire cloud n'est activée dans cette V0.3.</p>
-  <textarea id="memoryText" class="field" rows="8" placeholder="Ex. Je préfère des réponses directes..."></textarea>
-  <div class="row"><button class="small" id="closeMemory">Fermer</button><button class="small" id="saveMemory">Enregistrer</button></div>
-</dialog>
+  "Access-Control-Allow-Headers": "Content-Type, Authorization",
 
-<script>
-const $=s=>document.querySelector(s);
-const state={pc:null,dc:null,stream:null,connected:false,settings:JSON.parse(localStorage.getItem('jarvis.settings')||'{}'),memory:localStorage.getItem('jarvis.memory')||'',history:JSON.parse(localStorage.getItem('jarvis.history')||'[]')};
-const defaultSettings={name:"Karim",model:"gpt-realtime-2.1",voice:"marin"}; state.settings={...defaultSettings,...state.settings};
-const instructions=()=>`Tu es JARVIS, un assistant personnel vocal francophone. Ton utilisateur s'appelle ${state.settings.name}. Réponds en français par défaut, avec un ton calme, précis, concis et professionnel. Tu peux être légèrement futuriste mais ne caricature pas la voix. Utilise la mémoire fournie seulement comme contexte, sans inventer. Mémoire utilisateur: ${state.memory||"aucune mémoire supplémentaire."}`;
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS"
 
-function setStatus(s,sub=s){$('#status').textContent=s;$('#orbSub').textContent=sub;$('#orb').classList.toggle('active',s==='LISTENING'||s==='CONNECTED');}
-function addMsg(who,text){$('#panel').classList.add('show');const d=document.createElement('div');d.className='msg '+who;d.innerHTML=`<div class="label">${who==='user'?'VOUS':'JARVIS'}</div>${escapeHtml(text)}`;$('#messages').appendChild(d);$('#messages').scrollTop=$('#messages').scrollHeight;}
-function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
-function save(){localStorage.setItem('jarvis.settings',JSON.stringify(state.settings));localStorage.setItem('jarvis.memory',state.memory);localStorage.setItem('jarvis.history',JSON.stringify(state.history.slice(-20)));}
+};
 
-async function getToken(){
-  const r=await fetch('/api/realtime-token',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({model:state.settings.model,voice:state.settings.voice,instructions:instructions()})});
-  if(!r.ok) throw new Error(await r.text()); return (await r.json()).value;
+function json(data, status = 200) {
+
+  return new Response(JSON.stringify(data), {
+
+    status,
+
+    headers: {
+
+      "Content-Type": "application/json; charset=utf-8",
+
+      ...cors
+
+    }
+
+  });
+
 }
-async function connect(){
-  if(state.connected){disconnect();return;}
-  setStatus('CONNECTING','INITIALIZING');
-  const token=await getToken();
-  state.stream=await navigator.mediaDevices.getUserMedia({audio:true});
-  state.pc=new RTCPeerConnection();
-  state.stream.getTracks().forEach(t=>state.pc.addTrack(t,state.stream));
-  const audio=document.createElement('audio'); audio.autoplay=true; state.pc.ontrack=e=>{audio.srcObject=e.streams[0]};
-  state.dc=state.pc.createDataChannel('oai-events');
-  state.dc.onopen=()=>{state.connected=true;setStatus('CONNECTED','LISTENING');$('#hint').textContent='Parlez normalement. JARVIS vous répondra en temps réel.'; sendSessionConfig();};
-  state.dc.onmessage=e=>handleEvent(JSON.parse(e.data));
-  state.dc.onclose=()=>disconnect(true);
-  const offer=await state.pc.createOffer(); await state.pc.setLocalDescription(offer);
-  const fd=new FormData(); fd.append('sdp',offer.sdp); fd.append('session',JSON.stringify({type:'realtime',model:state.settings.model,instructions:instructions(),audio:{output:{voice:state.settings.voice}}}));
-  const resp=await fetch('https://api.openai.com/v1/realtime/calls',{method:'POST',headers:{Authorization:`Bearer ${token}`},body:fd});
-  if(!resp.ok) throw new Error(await resp.text());
-  await state.pc.setRemoteDescription({type:'answer',sdp:await resp.text()});
-}
-function sendSessionConfig(){if(!state.dc||state.dc.readyState!=='open')return; state.dc.send(JSON.stringify({type:'session.update',session:{type:'realtime',instructions:instructions(),audio:{output:{voice:state.settings.voice}}}}));}
-function handleEvent(ev){
-  if(ev.type==='conversation.item.input_audio_transcription.completed' && ev.transcript){addMsg('user',ev.transcript);state.history.push({role:'user',text:ev.transcript});save();}
-  if(ev.type==='response.output_audio_transcript.done' && ev.transcript){addMsg('jarvis',ev.transcript);state.history.push({role:'assistant',text:ev.transcript});save();}
-  if(ev.type==='error'){addMsg('jarvis','Erreur : '+(ev.error?.message||'erreur Realtime'));setStatus('ERROR','CHECK CONFIG');}
-}
-function disconnect(silent=false){state.connected=false;try{state.dc?.close();state.pc?.close();state.stream?.getTracks().forEach(t=>t.stop())}catch{} state.dc=null;state.pc=null;state.stream=null;if(!silent){setStatus('STANDBY','READY');$('#hint').textContent='Touchez le cercle pour démarrer une conversation vocale.'}}
-$('#mic').onclick=async()=>{try{if(state.connected)disconnect();else await connect()}catch(e){console.error(e);setStatus('ERROR','UNAVAILABLE');$('#hint').textContent='Impossible de démarrer. Vérifiez le déploiement et la clé API.'}};
-$('#settingsBtn').onclick=()=>{$('#name').value=state.settings.name;$('#model').value=state.settings.model;$('#voice').value=state.settings.voice;$('#settings').showModal()};
-$('#closeSettings').onclick=()=>$('#settings').close();
-$('#saveSettings').onclick=()=>{state.settings={name:$('#name').value.trim()||'Karim',model:$('#model').value,voice:$('#voice').value};save();$('#settings').close();if(state.connected)sendSessionConfig()};
-$('#memoryBtn').onclick=()=>{$('#memoryText').value=state.memory;$('#memory').showModal()};
-$('#closeMemory').onclick=()=>$('#memory').close();
-$('#saveMemory').onclick=()=>{state.memory=$('#memoryText').value.trim();save();$('#memory').close();if(state.connected)sendSessionConfig()};
-$('#clearBtn').onclick=()=>{state.history=[];$('#messages').innerHTML='';$('#panel').classList.remove('show');save()};
-setStatus('STANDBY','READY');
-</script>
-</body></html>
+
+export default {
+
+  async fetch(request, env) {
+
+    const url = new URL(request.url);
+
+    // CORS preflight
+
+    if (request.method === "OPTIONS") {
+
+      return new Response(null, {
+
+        status: 204,
+
+        headers: cors
+
+      });
+
+    }
+
+    /*
+
+     * ------------------------------------------------------------
+
+     * JARVIS — HEALTH CHECK
+
+     * ------------------------------------------------------------
+
+     */
+
+    if (url.pathname === "/api/health") {
+
+      return json({
+
+        ok: true,
+
+        service: "JARVIS",
+
+        openai_key_configured: Boolean(env.OPENAI_API_KEY),
+
+        realtime: true
+
+      });
+
+    }
+
+    /*
+
+     * ------------------------------------------------------------
+
+     * JARVIS — CREATE REALTIME CLIENT SECRET
+
+     * ------------------------------------------------------------
+
+     */
+
+    if (url.pathname === "/api/realtime-token") {
+
+      if (request.method !== "POST") {
+
+        return json(
+
+          {
+
+            ok: false,
+
+            error: "Method not allowed"
+
+          },
+
+          405
+
+        );
+
+      }
+
+      if (!env.OPENAI_API_KEY) {
+
+        return json(
+
+          {
+
+            ok: false,
+
+            error: "OPENAI_API_KEY manquante dans Cloudflare."
+
+          },
+
+          500
+
+        );
+
+      }
+
+      let body = {};
+
+      try {
+
+        body = await request.json();
+
+      } catch {
+
+        body = {};
+
+      }
+
+      const model =
+
+        body.model ||
+
+        "gpt-realtime-2.1";
+
+      const voice =
+
+        body.voice ||
+
+        "marin";
+
+      const instructions =
+
+        body.instructions ||
+
+        `
+
+Tu es JARVIS, un assistant personnel vocal francophone.
+
+Tu réponds en français par défaut.
+
+Ton style :
+
+- calme
+
+- précis
+
+- naturel
+
+- professionnel
+
+- concis
+
+- légèrement futuriste mais jamais caricatural
+
+Tu t'adresses à Karim.
+
+Ne prétends jamais avoir effectué une action que tu n'as pas réellement effectuée.
+
+Si tu ne sais pas quelque chose, indique-le clairement.
+
+`;
+
+      try {
+
+        /*
+
+         * OpenAI Realtime GA
+
+         *
+
+         * POST /v1/realtime/client_secrets
+
+         *
+
+         * Le token retourné est temporaire et commence
+
+         * généralement par "ek_".
+
+         */
+
+        const upstream = await fetch(
+
+          "https://api.openai.com/v1/realtime/client_secrets",
+
+          {
+
+            method: "POST",
+
+            headers: {
+
+              "Authorization": `Bearer ${env.OPENAI_API_KEY}`,
+
+              "Content-Type": "application/json"
+
+            },
+
+            body: JSON.stringify({
+
+              session: {
+
+                type: "realtime",
+
+                model,
+
+                instructions,
+
+                audio: {
+
+                  output: {
+
+                    voice
+
+                  }
+
+                }
+
+              }
+
+            })
+
+          }
+
+        );
+
+        const text = await upstream.text();
+
+        let data;
+
+        try {
+
+          data = JSON.parse(text);
+
+        } catch {
+
+          data = {
+
+            raw: text
+
+          };
+
+        }
+
+        if (!upstream.ok) {
+
+          return json(
+
+            {
+
+              ok: false,
+
+              error: "OpenAI a refusé la création du token.",
+
+              status: upstream.status,
+
+              details: data
+
+            },
+
+            upstream.status
+
+          );
+
+        }
+
+        if (!data.value) {
+
+          return json(
+
+            {
+
+              ok: false,
+
+              error: "OpenAI n'a pas retourné de client secret.",
+
+              details: data
+
+            },
+
+            502
+
+          );
+
+        }
+
+        return json({
+
+          ok: true,
+
+          value: data.value,
+
+          expires_at: data.expires_at,
+
+          session: data.session || null
+
+        });
+
+      } catch (error) {
+
+        return json(
+
+          {
+
+            ok: false,
+
+            error: "Erreur de communication avec OpenAI.",
+
+            details: String(error)
+
+          },
+
+          500
+
+        );
+
+      }
+
+    }
+
+    /*
+
+     * ------------------------------------------------------------
+
+     * JARVIS — ASSET / FRONTEND
+
+     * ------------------------------------------------------------
+
+     */
+
+    return env.ASSETS.fetch(request);
+
+  }
+
+};
