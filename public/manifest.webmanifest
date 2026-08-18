@@ -1,0 +1,17 @@
+{
+  "name": "JARVIS Personal Voice Assistant",
+  "short_name": "JARVIS",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#05080d",
+  "theme_color": "#05080d",
+  "lang": "fr-FR",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
